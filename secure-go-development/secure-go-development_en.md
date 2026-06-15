@@ -1,10 +1,10 @@
 # Secure Go Development
 
-|              |                                                                                 |
-| ------------ | ------------------------------------------------------------------------------- |
-| **Author**   | Vladimir Kochetkov                                                              |
-| **GitHub**   | [github.com/v0lka](https://github.com/v0lka)                                    |
-| **Telegram** | [t.me/art_code_ai](https://t.me/art_code_ai)                                    |
+|              |                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------- |
+| **Author**   | Vladimir Kochetkov                                                                             |
+| **GitHub**   | [github.com/v0lka](https://github.com/v0lka)                                                   |
+| **Telegram** | [t.me/art_code_ai](https://t.me/art_code_ai)                                                   |
 | **License**  | [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
 ## Table of Contents
@@ -36,7 +36,7 @@ In a typical backend project, security is most often broken by completely mundan
 
 Sections 1–12 are mapped to OWASP Top 10 for Web Applications items in the [2021](https://owasp.org/Top10/2021) and [2025](https://owasp.org/Top10/2025/) editions. Section 13 on AI-assisted development is added because risks from AI agent activities make sense to build into the same model as traditional vulnerability classes.
 
-Each section follows the same structure: "How to do this in Go" (idioms and code examples), "Libraries and Tools" (what to pull off the shelf), "Rules" (a short checklist). At the end of the article — a summary checklist across all sections and a separate block on linters and their setup. Examples of vulnerabilities that these practices train against can be found in the educational project [ShopVault](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md) — each section references its category and contains vulnerability exploitation scenarios (if someone still wants to dive into the AppSec area) and their fixes.
+Each section follows the same structure: "How to do this in Go" (idioms and code examples), "Libraries and Tools" (what to pull off the shelf), "Rules" (a short checklist). At the end of the article — a summary checklist across all sections and a separate block on linters and their setup. Examples of vulnerabilities that these practices train against can be found in the educational project [ShopVault](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md) — each section references its category and contains vulnerability exploitation scenarios (if someone still wants to dive into the AppSec area) and their fixes.
 
 The guide can be read linearly or as a reference: a redirect task comes up → section 11; you need an integration with an external API → section 12; authentication is being worked on → section 7. The checklist at the end works as a review list for PRs, including PRs from an AI agent.
 
@@ -58,7 +58,7 @@ It doesn't matter in which layer the vulnerability appeared or how it got there 
 
 > OWASP Category: A01:2021 / A01:2025 — Broken Access Control. In 2025, A10:2021 Server-Side Request Forgery (SSRF) is also consolidated here — see section 12.
 >
-> Reference: [ShopVault — Broken Access Control](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a012025--broken-access-control)
+> Reference: [ShopVault — Broken Access Control](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a012025--broken-access-control)
 
 There is one rule: every data operation verifies that the current user has the right to this specific operation on this specific data.
 
@@ -148,7 +148,7 @@ mux.Handle("GET /api/orders", RequireAuth(http.HandlerFunc(getOrders)))
 
 > OWASP Category: A02:2021 → A04:2025 — Cryptographic Failures.
 >
-> Reference: [ShopVault — Cryptographic Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a022025--cryptographic-failures)
+> Reference: [ShopVault — Cryptographic Failures](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a022025--cryptographic-failures)
 
 This is about basic data hygiene. It's important to define what is sensitive in terms of confidentiality (and where: storage, transmission, in which stores and over which channels), and handle it accordingly.
 
@@ -285,7 +285,7 @@ type UserResponse struct {
 
 > OWASP Category: A03:2021 → A05:2025 — Injection.
 >
-> Reference: [ShopVault — Injection](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a032025--injection)
+> Reference: [ShopVault — Injection](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a032025--injection)
 
 Two rules cover all types of injections, from SQL to shell commands:
 
@@ -403,7 +403,7 @@ if err := validate.Struct(req); err != nil {
 
 > OWASP Category: A04:2021 → A06:2025 — Insecure Design.
 >
-> Reference: [ShopVault — Insecure Design](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a042025--insecure-design)
+> Reference: [ShopVault — Insecure Design](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a042025--insecure-design)
 
 Insecure design: problems that cannot be fixed at the implementation stage because they are baked into the architecture.
 
@@ -508,7 +508,7 @@ It's important to note here that despite Go's effective measures for detecting d
 
 > OWASP Category: A05:2021 → A02:2025 — Security Misconfiguration. In 2025, the category rose to A02 as one of the most common problems by CVE statistics.
 >
-> Reference: [ShopVault — Security Misconfiguration](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a052025--security-misconfiguration)
+> Reference: [ShopVault — Security Misconfiguration](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a052025--security-misconfiguration)
 
 An application should be secure "out of the box," and insecure behavior should require explicit enabling. Secure defaults are the developer's responsibility.
 
@@ -676,7 +676,7 @@ Trade-off: `-s -w` strips the symbol table and DWARF debug data. This reduces bi
 
 > OWASP Category: A06:2021 Vulnerable and Outdated Components → A03:2025 Software Supply Chain Failures. The category has expanded: beyond outdated dependencies, it now explicitly considers risks across the entire supply chain — typosquatting, compromised maintainer accounts, package substitution in registries.
 >
-> Reference: [ShopVault — Software Supply Chain Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a062025--software-supply-chain-failures)
+> Reference: [ShopVault — Software Supply Chain Failures](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a062025--software-supply-chain-failures)
 
 Vulnerable, outdated, or attacked dependencies are one of the most common causes of incidents. In Go this is easier than in npm, but one should not relax.
 
@@ -749,7 +749,7 @@ jobs:
 
 > OWASP Category: A07:2021 Identification and Authentication Failures → A07:2025 Authentication Failures (the name has simplified, the essence remains the same).
 >
-> Reference: [ShopVault — Authentication Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a072025--identification-and-authentication-failures)
+> Reference: [ShopVault — Authentication Failures](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a072025--identification-and-authentication-failures)
 
 Writing your own authentication implementation from scratch is almost always a bad idea: there are too many places where it's easy to miss (hashing, session invalidation, brute-force protection, MFA, password reset). However, "ready-made library" in this section means different layers: a JWT library (`golang-jwt`) only provides token signing/parsing and is not responsible for the entire authentication process; a full-fledged identity platform (Ory Kratos, SuperTokens, ZITADEL) or an OIDC client (`coreos/go-oidc`) on top of an external provider — these are closer to a complete process. The higher the level at which you can delegate authentication, the less you'll have to fix later.
 
@@ -900,7 +900,7 @@ Without the invalidation step, "logout" only deletes the cookie on the user's si
 
 > OWASP Category: A10:2025 — Mishandling of Exceptional Conditions (new in 2025, no direct counterpart in 2021).
 >
-> Reference: [ShopVault — Mishandling of Exceptional Conditions](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a082025--mishandling-of-exceptional-conditions)
+> Reference: [ShopVault — Mishandling of Exceptional Conditions](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a082025--mishandling-of-exceptional-conditions)
 
 Go has no exceptions in the usual sense, but there is `panic` and there are business operations that must be atomic. Incorrect error handling turns a bug into a denial of the entire service.
 
@@ -1036,7 +1036,7 @@ func ProcessOrder(ctx context.Context, order Order) error {
 
 > OWASP Category: A08:2021 → A08:2025 — Software or Data Integrity Failures. The category was retained in 2025, only the name changed ("or" instead of "and").
 >
-> Reference: [ShopVault — Software or Data Integrity Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a082021--software-and-data-integrity-failures--dissolved-in-2025)
+> Reference: [ShopVault — Software or Data Integrity Failures](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a082021--software-and-data-integrity-failures--dissolved-in-2025)
 
 OWASP A08:2021 was partially redistributed in 2025: the supply chain was split off into a separate A03:2025 Software Supply Chain Failures, while data integrity and signature verification itself remained under A08 with a similar name. The essence is the same: you cannot trust what comes from outside without integrity verification.
 
@@ -1095,11 +1095,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
-      - run: go mod verify        # dependency integrity
-      - run: go vet ./...          # static analysis
-      - run: govulncheck ./...     # known vulnerabilities
-      - run: go test -race ./...   # tests + race detector
+          go-version: "1.26"
+      - run: go mod verify # dependency integrity
+      - run: go vet ./... # static analysis
+      - run: govulncheck ./... # known vulnerabilities
+      - run: go test -race ./... # tests + race detector
+
 
 # + in repository settings: branch protection rules
 # → Require pull request review before merging
@@ -1146,9 +1147,11 @@ http.ListenAndServe(":8080", handler)
 - **SRI (Subresource Integrity)**: if a Go backend serves HTML with CDN links, it's worth adding `integrity`. Guarantees that the browser won't execute a script with altered content (e.g., CDN compromised):
 
 ```html
-<script src="https://cdn.example.com/lib.js"
-        integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
-        crossorigin="anonymous"></script>
+<script
+  src="https://cdn.example.com/lib.js"
+  integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"
+  crossorigin="anonymous"
+></script>
 ```
 
 (The hash in the example is an illustration of the format; for a real file a real sha384 is needed.)
@@ -1177,7 +1180,7 @@ shasum -b -a 384 lib.js | awk '{ print $1 }' | xxd -r -p | base64 -w 0
 
 > OWASP Category: A09:2021 Security Logging and Monitoring Failures → A09:2025 Security Logging & Alerting Failures (in 2025, "Alerting" explicitly appeared in the name — the emphasis shifted to alerting, not just log collection).
 >
-> Reference: [ShopVault — Security Logging & Alerting Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a092025--security-logging-and-monitoring-failures)
+> Reference: [ShopVault — Security Logging & Alerting Failures](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a092025--security-logging-and-monitoring-failures)
 
 Logging is system observability. Without logs, it's impossible to figure out what happened when something breaks.
 
@@ -1287,7 +1290,7 @@ authFailures.WithLabelValues("bad_password").Inc()
 
 > OWASP Category: intersects with A04:2021 / A06:2025 — Insecure Design (mass assignment, open redirect, trust in boundaries) and A03:2021 / A05:2025 — Injection (external input validation). There is no separate category under this name in the main Top 10; the closest formal equivalent is "Unsafe Consumption of APIs" from OWASP API Security Top 10:2023.
 >
-> Reference: [ShopVault — Unsafe Direct Object Consumption](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a102025--unsafe-direct-object-consumption)
+> Reference: [ShopVault — Unsafe Direct Object Consumption](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a102025--unsafe-direct-object-consumption)
 
 If an application consumes data from outside (files, JSON, URL parameters, cookies) and makes decisions or accesses resources based on them, then validation, filtering, and limits are needed.
 
@@ -1437,7 +1440,7 @@ func UpdateProfile(c *gin.Context) {
 
 > OWASP Category: A10:2021 Server-Side Request Forgery (SSRF) → consolidated into A01:2025 Broken Access Control (SSRF is treated as a bypass of access control at the network level).
 >
-> Reference: [ShopVault — SSRF (consolidated into A01:2025)](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a102021--server-side-request-forgery--consolidated-into-a012025)
+> Reference: [ShopVault — SSRF (consolidated into A01:2025)](https://github.com/v0lka/ShopVault/blob/v1.1/VULNERABILITIES.md#a102021--server-side-request-forgery--consolidated-into-a012025)
 
 Covers OWASP A10:2021 (SSRF), which was consolidated into A01 (Broken Access Control) in 2025, SSRF is now considered a form of access control bypass. The essence: if an application makes network requests to user-supplied addresses, those addresses must be restricted.
 
