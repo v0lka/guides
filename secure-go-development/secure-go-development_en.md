@@ -1,11 +1,11 @@
 # Secure Go Development
 
-| | |
-|---|---|
-| **Author** | Vladimir Kochetkov |
-| **GitHub** | [github.com/v0lka](https://github.com/v0lka) |
-| **Telegram** | [t.me/art_code_ai](https://t.me/art_code_ai) |
-| **License** | [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+|              |                                                                                 |
+| ------------ | ------------------------------------------------------------------------------- |
+| **Author**   | Vladimir Kochetkov                                                              |
+| **GitHub**   | [github.com/v0lka](https://github.com/v0lka)                                    |
+| **Telegram** | [t.me/art_code_ai](https://t.me/art_code_ai)                                    |
+| **License**  | [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
 ## Table of Contents
 
@@ -28,29 +28,29 @@
 
 ## Introduction
 
-This is a guide for Go developers on writing secure code, without a deep dive into Application Security (AppSec). It does not require knowing all the exploitation techniques for every attack class or having years of "hack yourself first" practice. It is enough to be familiar with things any developer already knows: interfaces, middleware, typing, tests — and to have the habit of noticing where code can do a little more than it should.
+This is a guide for Go developers on writing secure code, without a deep dive into Application Security (AppSec). It does not require knowing the exploitation techniques for every attack class or having years of "hack yourself first" practice. It is enough to be familiar with things any developer already knows: interfaces, middleware, typing, tests — and to have the habit of noticing where code can do a little more than it should.
 
 In a typical backend project, security is most often broken by completely mundane things: a request that does not check the resource owner; an injection where something is interpolated somewhere via `fmt.Sprintf`; a token generated through `math/rand`; a redirect to a user-supplied URL without validation; a dependency that hasn't had `govulncheck` run on it for six months. Each of these problems is first and foremost a bug. And the only way to systematically deal with them is to treat them the same way as functional bugs: catch them in code review, cover them with tests, and fix them before release, without waiting for a CVE or the first incident.
 
 ### How to Read
 
-Sections 1–12 are mapped to OWASP Top 10 for Web Applications items in the [2021](https://owasp.org/Top10/2021) and [2025](https://owasp.org/Top10/2025/) editions. Section 13 on AI-assisted development is added as it is now an unavoidable part of the workflow, and risks from agents make sense to build into the same model as traditional vulnerability classes.
+Sections 1–12 are mapped to OWASP Top 10 for Web Applications items in the [2021](https://owasp.org/Top10/2021) and [2025](https://owasp.org/Top10/2025/) editions. Section 13 on AI-assisted development is added because risks from AI agent activities make sense to build into the same model as traditional vulnerability classes.
 
 Each section follows the same structure: "How to do this in Go" (idioms and code examples), "Libraries and Tools" (what to pull off the shelf), "Rules" (a short checklist). At the end of the article — a summary checklist across all sections and a separate block on linters and their setup. Examples of vulnerabilities that these practices train against can be found in the educational project [ShopVault](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md) — each section references its category and contains vulnerability exploitation scenarios (if someone still wants to dive into the AppSec area) and their fixes.
 
-The guide can be read linearly or as a reference: a redirect task comes up → section 11; you're doing an integration with an external API → section 12; writing authentication → section 7. The checklist at the end works as a review list for PRs, including PRs from an AI agent.
+The guide can be read linearly or as a reference: a redirect task comes up → section 11; you need an integration with an external API → section 12; authentication is being worked on → section 7. The checklist at the end works as a review list for PRs, including PRs from an AI agent.
 
 ### The Main Principle: A Vulnerability Is a Bug
 
-The overarching idea of the entire material is simple. A vulnerability is not a separate class of problem requiring special expertise in AppSec. It is an implementation that allows, by influencing the application from the outside, to do a little more or a little differently than the business logic intends. And it lives simultaneously in several layers:
+The overarching idea of the entire material is simple. Vulnerabilities should not be treated as a separate group of problems requiring special expertise in AppSec. They are rather a buggy implementation that allows, by influencing the application from the outside, to do a little more or a little differently than the business logic requires. And it lives simultaneously in several layers, corresponding to lifecycle stages:
 
-- **In the spec** — when the requirement "user sees their orders" is written without the explicit formulation "and does not see others'." The implementation may be meticulous, but the vulnerability is already baked into the requirements.
+- **In the spec** — when the requirement "user sees their orders" is written without the explicit formulation "and does not see others'." The implementation may be meticulous, but the foundation of the vulnerability is already laid in the requirements.
 - **In the architecture** — when the client calculates the cart total and the server trusts it; when a coupon is applied without `SELECT ... FOR UPDATE`; when each microservice has its own token with "everything" permissions.
 - **In the code** — when `fmt.Sprintf` builds queries or file paths, when `math/rand` generates a session ID, when `text/template` renders HTML, when authorization middleware is hung only on "the admin panel" but `/api/orders/:id` is forgotten.
 - **In configuration** — when `GIN_MODE=debug` ends up in production, when CORS stays as `*`, when CSP is reduced to a single stub.
 - **In the environment** — when a container runs as root, when `.env` with production keys lies next to `docker-compose.yml`, when CI lets a PR through without mandatory checks.
 
-It doesn't matter in which layer the vulnerability appeared or how it got there — a human, a snippet copied from Stack Overflow, or an AI agent. If you treat it as a bug (notice it in review, write a test, fix it, put up a regression gate), a significant portion of security problems are closed even before the first pentester or SAST/DAST/IAST scanner reaches them. You don't need to become a security analysis specialist — you just need to be a careful engineer and correctly use the language's idioms, the ecosystem's capabilities, and the available tooling. Minimizing attack surfaces, limiting inputs and outputs, following business logic, using proven tools — should be a consequence of this principle, not a "side" job for a dedicated AppSec team.
+It doesn't matter in which layer the vulnerability appeared or how it got there — a human, a snippet copied from Stack Overflow, or an AI agent. If you treat it as a bug (notice it in review, write a test, fix it, put up a regression gate), a significant portion of security problems are closed even before the first pentester or SAST/DAST/IAST scanner reaches them. You don't need to become a security analysis specialist — you just need to be a careful engineer and correctly use the language's idioms, the ecosystem's capabilities, and the available tooling. Minimizing attack surfaces, limiting inputs and outputs, following business logic, using proven tools — all of this should be a consequence of this principle, not playing the role of an AppSec expert alien to the developer.
 
 ---
 
@@ -1632,14 +1632,17 @@ This works as "speculation in reverse": the agent itself cites these rules in it
 # spec/checkout.md
 
 ## Goal
+
 Atomic checkout processing: capture payment + create order.
 
 ## Invariants
+
 - Product prices are taken from the DB, not from the payload.
 - Coupon is applied only in a transaction with `SELECT ... FOR UPDATE`.
 - On any error — transaction rollback, idempotent payment refund.
 
 ## Tests (mandatory)
+
 - TestCheckout_PriceFromDB — client sends price=0.01, total is calculated from DB.
 - TestCheckout_CouponRace — parallel coupon applications do not exceed max_uses.
 - TestCheckout_PaymentFailRollsBack — payment returned an error, no order in DB.
@@ -1730,34 +1733,34 @@ These skills are connected by the principle of "minimum for the project, maximum
 linters:
   enable:
     # Security
-    - gosec           # vulnerability patterns (SQL injection, hardcoded secrets, weak crypto...)
-    - bodyclose       # unclosed resp.Body = connection leak
-    - noctx           # HTTP requests without context = no timeout, no cancellation
-    - rowserrcheck    # unchecked rows.Err() after iteration
-    - sqlclosecheck   # unclosed sql.Rows, sql.Stmt
-    - contextcheck    # using a non-inherited context in the call chain
-    - makezero        # make([]T, n) with non-zero length — common source of bugs with append
-    - nilnil          # return nil, nil — the caller can't distinguish success from error
+    - gosec # vulnerability patterns (SQL injection, hardcoded secrets, weak crypto...)
+    - bodyclose # unclosed resp.Body = connection leak
+    - noctx # HTTP requests without context = no timeout, no cancellation
+    - rowserrcheck # unchecked rows.Err() after iteration
+    - sqlclosecheck # unclosed sql.Rows, sql.Stmt
+    - contextcheck # using a non-inherited context in the call chain
+    - makezero # make([]T, n) with non-zero length — common source of bugs with append
+    - nilnil # return nil, nil — the caller can't distinguish success from error
 
     # Code correctness
-    - govet           # standard vet (printf, structtag, unusedresult...)
-    - staticcheck     # the most powerful static analyzer for Go
-    - errcheck        # unchecked errors
-    - ineffassign     # assignment that is never used
-    - unused          # unused code
-    - gocritic        # 100+ checks for bugs, performance, and style
-    - errorlint       # errors in working with wrapped errors (errors.Is/As)
-    - exhaustive      # incomplete switch on enum types
+    - govet # standard vet (printf, structtag, unusedresult...)
+    - staticcheck # the most powerful static analyzer for Go
+    - errcheck # unchecked errors
+    - ineffassign # assignment that is never used
+    - unused # unused code
+    - gocritic # 100+ checks for bugs, performance, and style
+    - errorlint # errors in working with wrapped errors (errors.Is/As)
+    - exhaustive # incomplete switch on enum types
 
     # Style that affects security
-    - revive          # replacement for golint with configurable rules
-    - unconvert       # unnecessary type conversions (noise that hinders review)
-    - sloglint        # consistent use of log/slog (relevant for section 10)
+    - revive # replacement for golint with configurable rules
+    - unconvert # unnecessary type conversions (noise that hinders review)
+    - sloglint # consistent use of log/slog (relevant for section 10)
 
 linters-settings:
   gosec:
     excludes:
-      - G104    # unchecked error — duplicates errcheck, which is more flexible
+      - G104 # unchecked error — duplicates errcheck, which is more flexible
     config:
       G101:
         # Entropy threshold for detecting hardcoded secrets.
@@ -1777,30 +1780,30 @@ linters-settings:
 
   gocritic:
     enabled-checks:
-      - appendAssign       # append without assigning the result
-      - badCall            # incorrect arguments to fmt/log
-      - filepathJoin       # filepath.Join with unsafe user input
-      - sloppyReassign     # reassigning err in a block, losing the original error
-      - weakCond           # conditions that are always true/false
-      - unnecessaryBlock   # unnecessary blocks that complicate reading
-      - octalLiteral       # 0777 without explicit 0o-prefix (Go 1.13+)
+      - appendAssign # append without assigning the result
+      - badCall # incorrect arguments to fmt/log
+      - filepathJoin # filepath.Join with unsafe user input
+      - sloppyReassign # reassigning err in a block, losing the original error
+      - weakCond # conditions that are always true/false
+      - unnecessaryBlock # unnecessary blocks that complicate reading
+      - octalLiteral # 0777 without explicit 0o-prefix (Go 1.13+)
 
   staticcheck:
     checks:
       - all
-      - "-SA1019"   # deprecated — noisy on transitive dependencies, better to check separately
+      - "-SA1019" # deprecated — noisy on transitive dependencies, better to check separately
 
   errcheck:
-    check-type-assertions: true     # unchecked type assertions = runtime panic
-    check-blank: false              # _ = fn() — deliberate choice, don't complain
+    check-type-assertions: true # unchecked type assertions = runtime panic
+    check-blank: false # _ = fn() — deliberate choice, don't complain
 
   exhaustive:
-    default-signifies-exhaustive: true  # default in switch counts as covering all cases
+    default-signifies-exhaustive: true # default in switch counts as covering all cases
 
   sloglint:
     # kv-only forbids positional pairs and Sprintf; alternative — attr-only,
     # which requires slog.Attr style (slog.Int, slog.String). Choose based on your code.
-    kv-only: true                   # forbid slog.Info(fmt.Sprintf(...)) — logs should be structured
+    kv-only: true # forbid slog.Info(fmt.Sprintf(...)) — logs should be structured
 
   noctx:
     # No settings — simply catches http.Get() / http.Post() without context
@@ -1810,12 +1813,12 @@ issues:
     # Allowed in tests:
     - path: _test\.go
       linters:
-        - gosec         # test hardcoded values are not secrets
-        - errcheck      # in tests, assert covers errors
-        - bodyclose     # httptest doesn't require closing
+        - gosec # test hardcoded values are not secrets
+        - errcheck # in tests, assert covers errors
+        - bodyclose # httptest doesn't require closing
 
-  max-issues-per-linter: 0   # show all found issues
-  max-same-issues: 0         # don't hide duplicates
+  max-issues-per-linter: 0 # show all found issues
+  max-same-issues: 0 # don't hide duplicates
 ```
 
 ### What Each Linter Catches
@@ -1866,7 +1869,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.26'
+          go-version: "1.26"
       # Latest major version of the action: https://github.com/golangci/golangci-lint-action/releases
       - uses: golangci/golangci-lint-action@v9
         with:
