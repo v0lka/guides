@@ -7,23 +7,42 @@
 | **Telegram** | [t.me/art_code_ai](https://t.me/art_code_ai) |
 | **License** | [Creative Commons Attribution-ShareAlike 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [1. Access Control: Don't Give More Than Needed](#1-access-control-dont-give-more-than-needed)
+- [2. Data: Protecting What Should Not Be Public](#2-data-protecting-what-should-not-be-public)
+- [3. Input Data: Trust Only What Is Explicitly Defined](#3-input-data-trust-only-what-is-explicitly-defined)
+- [4. Architecture: Trust Boundaries at the Design Stage](#4-architecture-trust-boundaries-at-the-design-stage)
+- [5. Configuration: Secure Defaults](#5-configuration-secure-defaults)
+- [6. Dependencies: Managing What Is Used](#6-dependencies-managing-what-is-used)
+- [7. Authentication: Ready-Made Solutions with Correct Configuration](#7-authentication-ready-made-solutions-with-correct-configuration)
+- [8. Error Handling: Exceptional Situations Should Not Become Vulnerabilities](#8-error-handling-exceptional-situations-should-not-become-vulnerabilities)
+- [9. Data and Software Integrity: Verifying What Is Received](#9-data-and-software-integrity-verifying-what-is-received)
+- [10. Logging: Recording What Will Help Figure Things Out](#10-logging-recording-what-will-help-figure-things-out)
+- [11. External Data: Foreign Input Must Not Control Logic](#11-external-data-foreign-input-must-not-control-logic)
+- [12. External Requests: Limiting Server-Side Requests](#12-external-requests-limiting-server-side-requests)
+- [13. AI-Assisted Development: Process and Code in the Age of Agents](#13-ai-assisted-development-process-and-code-in-the-age-of-agents)
+- [Appendix A: Linters](#appendix-a-linters)
+- [Appendix B: Checklist](#appendix-b-checklist)
+
 ## Introduction
 
-This is a practical guide for Go developers on how to write secure code, without a deep dive into Application Security (AppSec). It does not require knowing all the exploitation techniques for every attack class or having years of "hack yourself first" practice. It is enough to be familiar with things developers already know: interfaces, middleware, typing, tests — and to have the habit of noticing where code "can do a little more than it should."
+This is a guide for Go developers on writing secure code, without a deep dive into Application Security (AppSec). It does not require knowing all the exploitation techniques for every attack class or having years of "hack yourself first" practice. It is enough to be familiar with things any developer already knows: interfaces, middleware, typing, tests — and to have the habit of noticing where code can do a little more than it should.
 
 In a typical backend project, security is most often broken by completely mundane things: a request that does not check the resource owner; an injection where something is interpolated somewhere via `fmt.Sprintf`; a token generated through `math/rand`; a redirect to a user-supplied URL without validation; a dependency that hasn't had `govulncheck` run on it for six months. Each of these problems is first and foremost a bug. And the only way to systematically deal with them is to treat them the same way as functional bugs: catch them in code review, cover them with tests, and fix them before release, without waiting for a CVE or the first incident.
 
 ### How to Read
 
-Sections 1–12 are mapped to OWASP Top 10 for Web Applications items in the [2021](https://owasp.org/Top10/2021) and [2025](https://owasp.org/Top10/2025/) editions. Section 13 on AI-assisted development is added because it is now an unavoidable part of the workflow, and risks from agents make sense to build into the same model as traditional vulnerability classes.
+Sections 1–12 are mapped to OWASP Top 10 for Web Applications items in the [2021](https://owasp.org/Top10/2021) and [2025](https://owasp.org/Top10/2025/) editions. Section 13 on AI-assisted development is added as it is now an unavoidable part of the workflow, and risks from agents make sense to build into the same model as traditional vulnerability classes.
 
-Each section follows the same structure: "How to do this in Go" (idioms and code examples), "Libraries and Tools" (what to pull off the shelf), "Rules" (a short checklist). At the end of the article — a summary checklist across all sections and a separate block on linters. Examples of vulnerabilities that these practices train against can be found in the educational project [ShopVault](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md) — each section references its category and contains examples of both vulnerable and secure code within that category.
+Each section follows the same structure: "How to do this in Go" (idioms and code examples), "Libraries and Tools" (what to pull off the shelf), "Rules" (a short checklist). At the end of the article — a summary checklist across all sections and a separate block on linters and their setup. Examples of vulnerabilities that these practices train against can be found in the educational project [ShopVault](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md) — each section references its category and contains vulnerability exploitation scenarios (if someone still wants to dive into the AppSec area) and their fixes.
 
-The guide can be read linearly or as a reference: a redirect task comes up → section 11; you're doing an integration with an external API → section 12; writing auth → section 7. The checklist at the end works as a review list for PRs, including PRs from an AI agent.
+The guide can be read linearly or as a reference: a redirect task comes up → section 11; you're doing an integration with an external API → section 12; writing authentication → section 7. The checklist at the end works as a review list for PRs, including PRs from an AI agent.
 
 ### The Main Principle: A Vulnerability Is a Bug
 
-The overarching idea of the entire material is simple. A vulnerability is not a separate class of problem requiring special expertise and a dedicated AppSec team. It is an implementation that allows, by influencing the application from the outside, to do a little more or a little differently than the business logic intends. And it lives simultaneously in several layers:
+The overarching idea of the entire material is simple. A vulnerability is not a separate class of problem requiring special expertise in AppSec. It is an implementation that allows, by influencing the application from the outside, to do a little more or a little differently than the business logic intends. And it lives simultaneously in several layers:
 
 - **In the spec** — when the requirement "user sees their orders" is written without the explicit formulation "and does not see others'." The implementation may be meticulous, but the vulnerability is already baked into the requirements.
 - **In the architecture** — when the client calculates the cart total and the server trusts it; when a coupon is applied without `SELECT ... FOR UPDATE`; when each microservice has its own token with "everything" permissions.
@@ -31,7 +50,7 @@ The overarching idea of the entire material is simple. A vulnerability is not a 
 - **In configuration** — when `GIN_MODE=debug` ends up in production, when CORS stays as `*`, when CSP is reduced to a single stub.
 - **In the environment** — when a container runs as root, when `.env` with production keys lies next to `docker-compose.yml`, when CI lets a PR through without mandatory checks.
 
-It does not matter in which layer the vulnerability appeared or who put it there — a human, a snippet copied from Stack Overflow, or an AI agent. If you treat it as a bug (notice it in review, write a test, fix it, put up a regression gate), a significant portion of AppSec problems are closed even before the first pentester or SAST/DAST/IAST scanner reaches them. You don't need to become a security analysis specialist — you need to be a careful engineer and correctly use the language's idioms, the ecosystem's capabilities, and the available tooling. Minimizing attack surfaces, limiting inputs and outputs, following business logic, using proven tools — should be a consequence of this principle, not a "side" job for a dedicated AppSec team.
+It doesn't matter in which layer the vulnerability appeared or how it got there — a human, a snippet copied from Stack Overflow, or an AI agent. If you treat it as a bug (notice it in review, write a test, fix it, put up a regression gate), a significant portion of security problems are closed even before the first pentester or SAST/DAST/IAST scanner reaches them. You don't need to become a security analysis specialist — you just need to be a careful engineer and correctly use the language's idioms, the ecosystem's capabilities, and the available tooling. Minimizing attack surfaces, limiting inputs and outputs, following business logic, using proven tools — should be a consequence of this principle, not a "side" job for a dedicated AppSec team.
 
 ---
 
@@ -245,7 +264,7 @@ type UserResponse struct {
 - **`crypto/rand`**: generation of random values (salt, tokens, keys).
 - **`crypto/subtle`**: `ConstantTimeCompare` for comparing hashes without timing leakage.
 - **[golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt)**: JWT with mandatory signature algorithm verification.
-- **[koanf](https://github.com/knadh/koanf)**: configuration from env, files, flags, Consul, etcd. Typed, no magic.
+- **[koanf](https://github.com/knadh/koanf)**: typed configuration from env, files, flags, Consul, etcd.
 - **[env](https://github.com/caarlos0/env)**: mapping environment variables to a Go struct via tags. Minimalist.
 - **[viper](https://github.com/spf13/viper)**: configuration combiner (env + yaml + consul + etcd + remote). Heavyweight, but covers everything.
 - **[SOPS](https://github.com/getsops/sops)**: encryption of secrets directly in yaml/json config files. Works with AWS KMS, GCP KMS, Azure Key Vault, age, PGP. Allows storing encrypted configs in git.
@@ -270,12 +289,12 @@ type UserResponse struct {
 
 Two rules cover all types of injections, from SQL to shell commands:
 
-1. Never construct from raw user input what will become code or a resource identifier (SQL, HTML, OS commands, file paths, URLs, and IPs).
+1. Never construct from raw user input what will become code or a resource identifier (SQL, HTML, OS commands, file paths, URLs, IPs, etc.).
 2. For data to stop being raw: validate on input AND sanitize on output.
 
 ### How to Do This in Go
 
-**SQL: always parameterized queries.** The `database/sql` idiom, `$1` or `?` placeholders:
+**SQL: always parameterized queries.** The `database/sql` pattern, `$1` or `?` placeholders:
 
 ```go
 // Bad — fmt.Sprintf + concatenation:
@@ -419,7 +438,7 @@ func (s *CheckoutService) CalculateTotal(ctx context.Context, items []CartItem) 
 }
 ```
 
-**Race protection.** Go handles concurrency excellently, but business operations must be atomic:
+**Race protection.** Go handles concurrency well, but business operations must be atomic:
 
 ```go
 // Coupon usage — in a transaction
@@ -617,7 +636,7 @@ ENTRYPOINT ["/server"]
 ```
 
 - **Environment configuration automation.** Production settings should be reproducible and verifiable. In practice: docker-compose for dev, Terraform/Pulumi for prod, environment variables instead of manual edits on the server.
-- **Server-side timeouts and TLS.** `http.ListenAndServe` with a zero-value `http.Server{}` sets no timeouts at all — this is a path to Slowloris and goroutine leaks. A minimally safe server looks like this:
+- **Server-side timeouts and TLS.** `http.ListenAndServe` with a zero-value `http.Server{}` sets no timeouts at all — this is a path to Slowloris attacks and goroutine leaks. A minimally safe server looks like this:
 
 ```go
 srv := &http.Server{
@@ -659,7 +678,7 @@ Trade-off: `-s -w` strips the symbol table and DWARF debug data. This reduces bi
 >
 > Reference: [ShopVault — Software Supply Chain Failures](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a062025--software-supply-chain-failures)
 
-Vulnerable, outdated, or attacked dependencies are one of the most common causes of incidents. In Go this is easier than, say, in npm, but one should not relax.
+Vulnerable, outdated, or attacked dependencies are one of the most common causes of incidents. In Go this is easier than in npm, but one should not relax.
 
 ### How to Do This in Go
 
@@ -710,7 +729,7 @@ jobs:
 
 ### Libraries and Tools
 
-- **[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)**: the official vulnerability checker from the Go team. Must-have.
+- **[govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)**: the official vulnerability scanner from the Go team. Must-have.
 - **[nancy](https://github.com/sonatype-nexus-community/nancy)**: alternative scanner from Sonatype.
 - **[Dependabot](https://docs.github.com/en/code-security/dependabot)** / **[Renovate](https://github.com/renovatebot/renovate)**: automatic PRs for dependency updates.
 - **`go mod verify`**: verifies that dependency files on disk match the checksums in `go.sum`. If someone (or something) has substituted a dependency's code locally — verify will catch it.
@@ -858,7 +877,7 @@ Without the invalidation step, "logout" only deletes the cookie on the user's si
 ### Libraries and Tools
 
 - **[golang-jwt/jwt/v5](https://github.com/golang-jwt/jwt)**: JWT library (only token signing/parsing, not full authentication). v5 is recommended (not v4), always with algorithm verification. For new systems — asymmetric algorithms (`EdDSA`, `RS256`).
-- **[golang.org/x/time/rate](https://pkg.go.dev/golang.org/x/time/rate)**: rate limiting from the Go ecosystem's extended packages (`golang.org/x/...`). One limiter per IP — enough to protect the login endpoint.
+- **[golang.org/x/time/rate](https://pkg.go.dev/golang.org/x/time/rate)**: rate limiting from the Go ecosystem's extended packages (`golang.org/x/...`). One limiter per IP+account — enough to protect the login endpoint.
 - **[ulule/limiter](https://github.com/ulule/limiter)**: rate limiter with Redis (for distributed systems), ready-made middleware for Gin/Echo/Chi. If there's more than one instance, an in-memory limiter won't help; shared storage is needed.
 - **[coreos/go-oidc](https://github.com/coreos/go-oidc)**: OpenID Connect client. If it's possible to delegate authentication (Google, GitHub, Keycloak, Auth0) — it's worth delegating. MFA, brute-force protection, and password management come for free; only the identifier is stored on your side.
 - **Full-fledged identity platforms for self-hosted**: [Ory Kratos](https://github.com/ory/kratos), [SuperTokens](https://github.com/supertokens/supertokens-core), [ZITADEL](https://github.com/zitadel/zitadel): authentication process, MFA, password reset, audit log out of the box.
@@ -909,7 +928,7 @@ go func() {
 }()
 ```
 
-**Business operations — in transactions.** If part of an operation fails — there should be no "hung" states:
+**Business operations — in transactions.** If part of an operation fails, there should be no "hung" states:
 
 ```go
 func (s *CheckoutService) Process(ctx context.Context, req CheckoutRequest) error {
@@ -950,7 +969,7 @@ r := gin.New()
 r.Use(gin.Recovery()) // logs to stderr, client gets generic 500
 ```
 
-**Resource cleanup on errors.** If a file is uploaded but processing fails — the file should not hang around forever. The pattern — a `committed` flag that is only cleared on success:
+**Resource cleanup on errors.** If a file is uploaded but processing fails, the file should not hang around forever. The pattern — a `committed` flag that is only cleared on success:
 
 ```go
 func (h *UploadHandler) Process(c *gin.Context) {
@@ -1270,7 +1289,7 @@ authFailures.WithLabelValues("bad_password").Inc()
 >
 > Reference: [ShopVault — Unsafe Direct Object Consumption](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a102025--unsafe-direct-object-consumption)
 
-If an application consumes data from outside (files, JSON, URL parameters, cookies) and makes decisions or accesses resources based on them, validation, filtering, and limits are needed.
+If an application consumes data from outside (files, JSON, URL parameters, cookies) and makes decisions or accesses resources based on them, then validation, filtering, and limits are needed.
 
 ### How to Do This in Go
 
@@ -1408,7 +1427,7 @@ func UpdateProfile(c *gin.Context) {
 
 - File paths: `filepath.Abs` + prefix check. Never `filepath.Join` with raw input.
 - Data updates: typed structures with a whitelist of fields, not `map[string]interface{}`.
-- Redirect URL: only relative paths or a domain whitelist.
+- Redirect URLs: only relative paths or a domain whitelist.
 - Data from external APIs/webhooks: full validation before use.
 - Configuration: whitelist of allowed keys.
 
@@ -1420,7 +1439,7 @@ func UpdateProfile(c *gin.Context) {
 >
 > Reference: [ShopVault — SSRF (consolidated into A01:2025)](https://github.com/v0lka/ShopVault/blob/v1.0/VULNERABILITIES.md#a102021--server-side-request-forgery--consolidated-into-a012025)
 
-Covers OWASP A10:2021 (SSRF), which was consolidated into A01 (Broken Access Control) in 2025 — SSRF is now considered a form of access control bypass. The essence: if an application makes network requests to user-supplied addresses, those addresses must be restricted.
+Covers OWASP A10:2021 (SSRF), which was consolidated into A01 (Broken Access Control) in 2025, SSRF is now considered a form of access control bypass. The essence: if an application makes network requests to user-supplied addresses, those addresses must be restricted.
 
 ### How to Do This in Go
 
@@ -1583,7 +1602,7 @@ func SafeFetch(ctx context.Context, rawURL string) (*http.Response, error) {
 
 > OWASP Category: intersects with OWASP Top 10 for LLM Applications 2025 (LLM01 Prompt Injection, LLM02 Insecure Output Handling, LLM05 Improper Output Handling, and LLM08 Excessive Agency) and with all twelve sections above — because code written by an agent falls into exactly the same vulnerability categories as code written by a human.
 
-As of June 2026, "asking Claude/Cursor/Codex to write a handler" is as much a part of the routine as searching Stack Overflow was ten years ago. One thing has changed: the agent itself edits files, runs commands, reads dependencies and issues, and sometimes deploys. This introduces two classes of new risks that regular autocomplete did not have:
+Now "asking Claude/Cursor/Codex to write a handler" is as much a part of the routine as searching Stack Overflow was ten years ago. One thing has changed: the agent itself edits files, runs commands, reads dependencies and issues, and sometimes deploys. This introduces two classes of new risks that regular autocomplete did not have:
 
 1. **Quality of generated code.** The model is trained on public repositories, and among them is a sea of examples with `fmt.Sprintf` in SQL, `math/rand` for tokens, `text/template` for HTML, and middleware with swallowed errors. If you don't set boundaries, the agent confidently reproduces this style.
 2. **Security of the process itself.** The agent reads external data (issue comments, dependency READMEs, web pages, MCP server responses) — and any of these strings may contain an instruction that the model interprets as a command. This is **prompt injection** in all its variants, including indirect prompt injection through file contents in the repository.
@@ -1607,7 +1626,7 @@ As of June 2026, "asking Claude/Cursor/Codex to write a handler" is as much a pa
 
 This works as "speculation in reverse": the agent itself cites these rules in its changes and doesn't fall into tempting anti-patterns. A more systematic solution is a `SECURITY.md` file — a part extracted from `AGENTS.md` that accumulates all security questions in the project, referenced by `AGENTS.md`.
 
-**Spec-Driven Development instead of "generate a feature for me."** The more formal the specification, the narrower the room for interpretation. The approach that took shape in 2025–2026 (see below) — write or generate a **specification** (what should be done, which invariants, which negative scenarios, which tests), and the agent then turns it into code:
+**Spec-Driven Development instead of "generate a feature for me."** The more formal the specification, the narrower the room for interpretation. The approach that took shape in 2025–2026 — write or generate a **specification** (what should be done, which invariants, which negative scenarios, which tests), and the agent then turns it into code:
 
 ```markdown
 # spec/checkout.md
@@ -1671,14 +1690,14 @@ It's useful to have a "second pair of eyes" — a separate reviewer agent whose 
 
 ### Ready-Made Skills for Agents
 
-Agent skills are reusable "cheat sheets" that the agent loads as needed. Below are skills that cover the most painful problems of agent-based development:
+Agent skills are reusable prompts that the agent loads as needed. Below are skills that cover the most painful problems of gen-AI code security:
 
 - **[security-policy-generator](https://github.com/v0lka/skills/tree/main/security/security-policy-generator)** — generation and maintenance of `SECURITY.md`: threat model, disclosure policy, secure development rules. Solves the classic problem: "the security document was written at project start and forgotten" — the skill updates policies against the current code and dependency tree.
-- **[secure-go](https://github.com/v0lka/skills/tree/main/development/secure-go)** — a skill built exactly on this article. Connecting it to a project turns its recommendations into a persistent agent context: when editing a handler, the skill reminds the agent about query parameterization and owner checks; when working with auth — about `alg` and `exp` verification; when working with external URLs — about whitelists and private IPs.
-- **[idiomatic-go](https://github.com/v0lka/skills/tree/main/development/idiomatic-go)** — a set of skills based on the excellent book "100 Go Mistakes and How to Avoid Them" by Teiva Harsanyi. Catches classic Go traps that also hurt security: loop variable capture, nil-channel deadlocks, uninitialized slices, value/pointer receiver confusion, goroutine leaks.
+- **[secure-go](https://github.com/v0lka/skills/tree/main/development/secure-go)** — a skill built exactly on this article. Connecting it to a project turns its recommendations into a persistent agent context: when editing a handler, the skill reminds the agent about query parameterization and owner checks; when working with authentication — about `alg` and `exp` verification; when working with external URLs — about whitelists and private IPs.
+- **[idiomatic-go](https://github.com/v0lka/skills/tree/main/development/idiomatic-go)** — a set of skills based on the excellent book "100 Go Mistakes and How to Avoid Them" by Teiva Harsanyi. Catches classic Go traps that also cause security problems quite often: loop variable capture, nil-channel deadlocks, uninitialized slices, value/pointer receiver confusion, goroutine leaks.
 - **[sdd](https://github.com/v0lka/skills/tree/main/development/sdd)** — Spec-Driven Development. Allows the agent to write a spec before code: goals, invariants, negative scenarios, tests. In practice, SDD most strongly reduces the class of vulnerabilities where "implementation went beyond the spec" — and that, as stated in the introduction, is the definition of a vulnerability.
 
-These skills are connected by the principle of "minimum for the project, maximum for security-sensitive modules": `idiomatic-go` makes sense to have always, `secure-go` — for everything that processes requests or works with data, `sdd` — for new features with non-trivial logic, `security-policy-generator` — as a periodic revision (e.g., in quarterly milestones).
+These skills are connected by the principle of "minimum for the project, maximum for security-sensitive modules": `idiomatic-go` makes sense to have always, `secure-go` — for everything that processes requests or works with data (i.e., constitutes the so-called "attack surface"), `sdd` — for new features with non-trivial logic, `security-policy-generator` — as a periodic revision (e.g., in quarterly milestones).
 
 ### Libraries and Tools
 
@@ -1688,15 +1707,15 @@ These skills are connected by the principle of "minimum for the project, maximum
 - **Tool-call logging**: the same `slog` JSON logs as in production, plus storing full prompt input/output in a protected storage — for post-incident prompt injection analysis.
 - **`govulncheck` and `gosec`** on every AI-PR as mandatory (see sections 6 and the linter block). The autoregressive model especially eagerly pulls in outdated crypto patterns.
 - **Secret scanners in pre-commit**: `gitleaks`, `trufflehog`. If the agent accidentally put `.env` in the diff, the gate should be before push, not after.
-- **Code and skill scanner for prompt injections**: [ipi-check](https://github.com/v0lka/ipi-check) — everything given to the coding agent for processing should be run through it.
+- **Code and skill scanner for prompt injections**: [ipi-check](https://github.com/v0lka/ipi-check) — everything explicitly or implicitly given to the coding agent for processing should be run through it.
 
 ### Rules
 
-- Agent context is fixed in the repository (`AGENTS.md`/`CLAUDE.md`/skills).
+- Agent context is fixed in the repository (`AGENTS.md`/`SECURITY.md`/skills).
 - Specification and tests are written before code generation; the agent implements them.
 - The agent's tools run in a sandbox without access to production secrets; tool permissions are granted minimally.
 - AI-PR passes the same CI gates as human ones: `go vet`, `golangci-lint`, `govulncheck`, `go test -race`. No concessions for "it's generated."
-- Sensitive changes (auth, crypto, data access, external requests) — mandatory manual human review.
+- Sensitive changes (authentication, cryptography, data access, external requests) — mandatory manual human review.
 - Logging of agent actions — at the level of production audit logs: `tool`, `args`, `result`, `initiator`.
 
 ---
@@ -1817,7 +1836,7 @@ issues:
 
 **contextcheck** catches situations where further down the call chain, a non-parent `ctx` received from arguments is passed, but some other context (a common case — `context.Background()` created on the spot). This breaks the entire cancellation and timeout chain.
 
-**exhaustive** forces handling all enum values in switch. If a new `OrderStatus` is added tomorrow, the linter will show all switches where it was forgotten. Without this — silent fallthrough to default.
+**exhaustive** forces handling all enum values in switch. If a new `OrderStatus` is added tomorrow, the linter will show all switches where it was forgotten.
 
 **makezero** catches `s := make([]int, 5)` followed by `s = append(s, x)`. Result: `[0 0 0 0 0 x]`, not `[x]`. A common bug that doesn't manifest immediately.
 
@@ -1856,7 +1875,7 @@ jobs:
 
 ### Tips for Adoption
 
-Enabling all linters on an old project at once is a bad idea. The result — an avalanche of findings and a desire to throw out the config. Instead:
+Enabling all linters on an old project at once is a bad idea. The result will be an avalanche of findings and a desire to throw out the config. Instead:
 
 1. Start with `golangci-lint run --new-from-rev=main` — checks only new code.
 2. Add linters one by one, starting with gosec and errcheck.
